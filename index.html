@@ -1,40 +1,877 @@
+```html
 <!DOCTYPE html>
-<html>
+<html lang="en">
+
 <head>
-    <meta charset="UTF-8">
-    <title>Frutiger Aero Fluid</title>
 
-    <style>
-        html, body {
-            margin: 0;
-            width: 100%;
-            height: 100%;
-            overflow: hidden;
-            background: black;
-        }
+<meta charset="UTF-8">
 
-        #bg {
-            position: fixed;
-            inset: 0;
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-        }
+<meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+>
 
-        #fluid {
-            position: fixed;
-            inset: 0;
-            width: 100%;
-            height: 100%;
-        }
-    </style>
+<title>Frutiger Aero Fluid</title>
+
+
+<style>
+
+/* =================================
+   PAGE
+================================= */
+
+html,
+body {
+
+    margin: 0;
+    padding: 0;
+
+    width: 100%;
+    height: 100%;
+
+    overflow: hidden;
+
+    background: #000;
+
+}
+
+
+/* =================================
+   VIDEO
+================================= */
+
+#video {
+
+    position: fixed;
+
+    inset: 0;
+
+    width: 100%;
+    height: 100%;
+
+    object-fit: cover;
+
+    z-index: 0;
+
+}
+
+
+/* =================================
+   WATER CANVAS
+================================= */
+
+#fluid {
+
+    position: fixed;
+
+    inset: 0;
+
+    width: 100%;
+    height: 100%;
+
+    z-index: 1;
+
+    pointer-events: none;
+
+}
+
+</style>
+
 </head>
+
 
 <body>
 
-    <!-- Fluid effect will go here -->
 
-    <canvas id="fluid"></canvas>
+<!-- =================================
+     BACKGROUND VIDEO
+================================= -->
+
+<video
+    id="video"
+    autoplay
+    muted
+    loop
+    playsinline
+    preload="auto"
+>
+
+    <source
+        src="./Videoplayback.mp4"
+        type="video/mp4"
+    >
+
+</video>
+
+
+<!-- =================================
+     WATER EFFECT
+================================= -->
+
+<canvas id="fluid"></canvas>
+
+
+<script>
+
+
+/* =================================
+   CANVAS SETUP
+================================= */
+
+const canvas =
+    document.getElementById("fluid");
+
+const ctx =
+    canvas.getContext("2d");
+
+
+let ripples = [];
+
+
+/* =================================
+   MOUSE TRACKING
+================================= */
+
+let lastX = 0;
+let lastY = 0;
+
+let lastSpawn = 0;
+
+
+/* =================================
+   RESIZE
+================================= */
+
+function resize() {
+
+    const dpr =
+        Math.min(
+            window.devicePixelRatio || 1,
+            2
+        );
+
+
+    canvas.width =
+        window.innerWidth * dpr;
+
+    canvas.height =
+        window.innerHeight * dpr;
+
+
+    canvas.style.width =
+        window.innerWidth + "px";
+
+    canvas.style.height =
+        window.innerHeight + "px";
+
+
+    ctx.setTransform(
+        dpr,
+        0,
+        0,
+        dpr,
+        0,
+        0
+    );
+
+}
+
+
+window.addEventListener(
+    "resize",
+    resize
+);
+
+
+resize();
+
+
+/* =================================
+   SMOOTH EASING
+================================= */
+
+function easeOutCubic(t) {
+
+    return 1 -
+        Math.pow(
+            1 - t,
+            3
+        );
+
+}
+
+
+function easeOutQuad(t) {
+
+    return 1 -
+        (1 - t) *
+        (1 - t);
+
+}
+
+
+/* =================================
+   MOUSE → WATER IMPACT
+================================= */
+
+window.addEventListener(
+    "mousemove",
+    function(e) {
+
+        const now =
+            performance.now();
+
+
+        const dx =
+            e.clientX - lastX;
+
+        const dy =
+            e.clientY - lastY;
+
+
+        const distance =
+            Math.sqrt(
+                dx * dx +
+                dy * dy
+            );
+
+
+        /*
+           Create a ripple only when
+           the mouse has moved enough.
+        */
+
+        if (
+            distance > 35 &&
+            now - lastSpawn > 95
+        ) {
+
+            ripples.push({
+
+                x: e.clientX,
+
+                y: e.clientY,
+
+                age: 0,
+
+                seed:
+                    Math.random() * 1000,
+
+                strength:
+                    Math.min(
+                        distance / 80,
+                        1
+                    )
+
+            });
+
+
+            /*
+               Keep the effect lightweight.
+            */
+
+            if (
+                ripples.length > 12
+            ) {
+
+                ripples.shift();
+
+            }
+
+
+            lastX =
+                e.clientX;
+
+            lastY =
+                e.clientY;
+
+            lastSpawn =
+                now;
+
+        }
+
+    }
+);
+
+
+/* =================================
+   FRUTIGER AERO WATER RING
+================================= */
+
+function drawAeroRing(
+    x,
+    y,
+    radius,
+    alpha,
+    width
+) {
+
+
+    /*
+       =========================
+       SOFT WATER AURA
+       =========================
+    */
+
+    ctx.save();
+
+
+    ctx.beginPath();
+
+
+    ctx.arc(
+        x,
+        y,
+        radius,
+        0,
+        Math.PI * 2
+    );
+
+
+    ctx.strokeStyle =
+        `rgba(
+            90,
+            220,
+            255,
+            ${alpha * 0.055}
+        )`;
+
+
+    ctx.lineWidth =
+        width * 7;
+
+
+    ctx.shadowBlur =
+        18;
+
+
+    ctx.shadowColor =
+        `rgba(
+            70,
+            220,
+            255,
+            ${alpha * 0.10}
+        )`;
+
+
+    ctx.stroke();
+
+
+    ctx.restore();
+
+
+    /*
+       =========================
+       DARK AQUA WATER EDGE
+       =========================
+    */
+
+    ctx.beginPath();
+
+
+    ctx.arc(
+        x,
+        y,
+        radius,
+        0,
+        Math.PI * 2
+    );
+
+
+    ctx.strokeStyle =
+        `rgba(
+            20,
+            130,
+            180,
+            ${alpha * 0.20}
+        )`;
+
+
+    ctx.lineWidth =
+        width * 1.35;
+
+
+    ctx.stroke();
+
+
+    /*
+       =========================
+       LIGHT AQUA EDGE
+       =========================
+    */
+
+    ctx.beginPath();
+
+
+    ctx.arc(
+        x,
+        y,
+        radius - width * 0.5,
+        0,
+        Math.PI * 2
+    );
+
+
+    ctx.strokeStyle =
+        `rgba(
+            120,
+            235,
+            255,
+            ${alpha * 0.20}
+        )`;
+
+
+    ctx.lineWidth =
+        width;
+
+
+    ctx.stroke();
+
+
+    /*
+       =========================
+       WHITE WATER REFLECTION
+       =========================
+    */
+
+    ctx.save();
+
+
+    ctx.beginPath();
+
+
+    ctx.arc(
+        x,
+        y,
+        radius - width,
+        Math.PI * 1.05,
+        Math.PI * 1.52
+    );
+
+
+    ctx.strokeStyle =
+        `rgba(
+            255,
+            255,
+            255,
+            ${alpha * 0.42}
+        )`;
+
+
+    ctx.lineWidth =
+        width * 0.8;
+
+
+    ctx.shadowBlur =
+        7;
+
+
+    ctx.shadowColor =
+        `rgba(
+            255,
+            255,
+            255,
+            ${alpha * 0.30}
+        )`;
+
+
+    ctx.stroke();
+
+
+    ctx.restore();
+
+
+    /*
+       =========================
+       GREEN WATER REFLECTION
+       =========================
+    */
+
+    ctx.beginPath();
+
+
+    ctx.arc(
+        x,
+        y,
+        radius + width,
+        Math.PI * 0.20,
+        Math.PI * 0.52
+    );
+
+
+    ctx.strokeStyle =
+        `rgba(
+            100,
+            255,
+            205,
+            ${alpha * 0.10}
+        )`;
+
+
+    ctx.lineWidth =
+        width;
+
+
+    ctx.stroke();
+
+
+    /*
+       =========================
+       INNER WATER EDGE
+       =========================
+    */
+
+    ctx.beginPath();
+
+
+    ctx.arc(
+        x,
+        y,
+        radius * 0.96,
+        0,
+        Math.PI * 2
+    );
+
+
+    ctx.strokeStyle =
+        `rgba(
+            210,
+            250,
+            255,
+            ${alpha * 0.08}
+        )`;
+
+
+    ctx.lineWidth =
+        0.8;
+
+
+    ctx.stroke();
+
+}
+
+
+/* =================================
+   ANIMATION
+================================= */
+
+let previousTime =
+    performance.now();
+
+
+function animate(now) {
+
+
+    const delta =
+        Math.min(
+            now - previousTime,
+            32
+        );
+
+
+    previousTime =
+        now;
+
+
+    /*
+       Clear the previous water frame.
+    */
+
+    ctx.clearRect(
+        0,
+        0,
+        window.innerWidth,
+        window.innerHeight
+    );
+
+
+    /*
+       Draw every active ripple.
+    */
+
+    for (
+        let i = ripples.length - 1;
+        i >= 0;
+        i--
+    ) {
+
+
+        const r =
+            ripples[i];
+
+
+        r.age += delta;
+
+
+        /* =========================
+           RIPPLE LIFETIME
+        ========================= */
+
+        const lifetime =
+            1550;
+
+
+        const progress =
+            Math.min(
+                r.age / lifetime,
+                1
+            );
+
+
+        /* =========================
+           SMOOTH EXPANSION
+        ========================= */
+
+        const expansion =
+            easeOutCubic(
+                progress
+            );
+
+
+        /* =========================
+           SMOOTH FADE
+        ========================= */
+
+        const fade =
+            Math.pow(
+                1 - progress,
+                1.55
+            );
+
+
+        /*
+           Very small movement makes
+           the ripple feel less robotic.
+        */
+
+        const wobble =
+            Math.sin(
+                r.age * 0.0025 +
+                r.seed
+            ) *
+            0.8;
+
+
+        const x =
+            r.x + wobble;
+
+
+        const y =
+            r.y;
+
+
+        /* =========================
+           MAIN WATER WAVE
+        ========================= */
+
+        const radius1 =
+            3 +
+            expansion * 125;
+
+
+        drawAeroRing(
+            x,
+            y,
+            radius1,
+            fade * 0.75,
+            1.5
+        );
+
+
+        /* =========================
+           SECOND WATER WAVE
+        ========================= */
+
+        if (
+            r.age > 120
+        ) {
+
+
+            const p2 =
+                Math.min(
+                    (
+                        r.age -
+                        120
+                    ) / 1430,
+                    1
+                );
+
+
+            const e2 =
+                easeOutCubic(
+                    p2
+                );
+
+
+            const fade2 =
+                Math.pow(
+                    1 - p2,
+                    1.65
+                );
+
+
+            const radius2 =
+                5 +
+                e2 * 175;
+
+
+            drawAeroRing(
+                x,
+                y,
+                radius2,
+                fade2 * 0.32,
+                1.1
+            );
+
+        }
+
+
+        /* =========================
+           THIRD VERY SOFT WAVE
+        ========================= */
+
+        if (
+            r.age > 260
+        ) {
+
+
+            const p3 =
+                Math.min(
+                    (
+                        r.age -
+                        260
+                    ) / 1290,
+                    1
+                );
+
+
+            const e3 =
+                easeOutQuad(
+                    p3
+                );
+
+
+            const fade3 =
+                Math.pow(
+                    1 - p3,
+                    1.8
+                );
+
+
+            const radius3 =
+                10 +
+                e3 * 210;
+
+
+            drawAeroRing(
+                x,
+                y,
+                radius3,
+                fade3 * 0.10,
+                0.8
+            );
+
+        }
+
+
+        /* =========================
+           REMOVE OLD RIPPLE
+        ========================= */
+
+        if (
+            progress >= 1
+        ) {
+
+            ripples.splice(
+                i,
+                1
+            );
+
+        }
+
+    }
+
+
+    requestAnimationFrame(
+        animate
+    );
+
+}
+
+
+requestAnimationFrame(
+    animate
+);
+
+
+/* =================================
+   VIDEO
+================================= */
+
+const video =
+    document.getElementById(
+        "video"
+    );
+
+
+/*
+   Try to start the video immediately.
+   It is muted initially so browsers
+   allow autoplay.
+*/
+
+function playVideo() {
+
+    video.play()
+        .catch(
+            () => {}
+        );
+
+}
+
+
+playVideo();
+
+
+/* =================================
+   ENABLE AUDIO AFTER INTERACTION
+================================= */
+
+function enableAudio() {
+
+    video.muted = false;
+
+    video.volume = 1;
+
+    video.play()
+        .catch(
+            () => {}
+        );
+
+}
+
+
+window.addEventListener(
+    "pointerdown",
+    enableAudio,
+    {
+        once: true
+    }
+);
+
+
+window.addEventListener(
+    "mousemove",
+    enableAudio,
+    {
+        once: true
+    }
+);
+
+
+</script>
 
 </body>
+
 </html>
+```
